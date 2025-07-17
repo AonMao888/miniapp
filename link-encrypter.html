@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side "URL Shortener" (Responsive)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Align to top initially */
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 96%;
+            max-width: 700px;
+            margin-bottom: 30px;
+            margin-top: 19px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 2.2em;
+        }
+        p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 0 7px;
+            margin-bottom: 25px;
+            text-align: left;
+            color: #6a4a00;
+            font-size: 0.9em;
+        }
+        .warning ul {
+            margin: 10px 0 0 20px;
+            padding: 0;
+        }
+        .warning li {
+            margin-bottom: 5px;
+        }
+
+        /* Input and Button Styles */
+        .input-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="url"] {
+            width: calc(100% - 24px); /* Account for padding */
+            padding: 12px;
+            border: 1px solid #c0c0c0;
+            border-radius: 6px;
+            font-size: 1em;
+            margin-bottom: 15px;
+            box-sizing: border-box; /* Include padding in width */
+            max-width: 100%; /* Ensure it doesn't overflow */
+        }
+        input[type="url"]:focus{
+            outline-color: royalblue;
+        }
+        button {
+            background-color: royalblue;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Footer Styles */
+        .footer {
+            margin-top: 20px;
+            font-size: 0.85em;
+            color: #777;
+            text-align: center;
+        }
+        a {
+            color: royalblue;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* --- Loading Overlay Styles --- */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s linear;
+        }
+        #loading-overlay.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading-text {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        /* --- Link Result Modal/Popup Styles --- */
+        .modal-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
+            justify-content: center;
+            align-items: center;
+            z-index: 10000; /* Higher than loading overlay */
+            animation: fadeIn 0.3s forwards;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            position: relative;
+            width: 90%;
+            max-width: 500px;
+            animation: slideIn 0.3s forwards;
+            text-align: center; /* Center content within modal */
+        }
+        .modal-content h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .modal-content code {
+            display: block;
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            color: #0056b3;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            overflow-x: auto; /* Allow scrolling if link is too long */
+            margin-bottom: 20px;
+            text-align: left; /* Align code to left */
+        }
+        .modal-actions {
+            display: flex;
+            flex-direction: column; /* Stack buttons vertically on small screens */
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-actions button {
+            width: 100%; /* Full width for buttons in modal */
+            padding: 10px;
+            font-size: 1em;
+        }
+        .modal-copy-btn {
+            background-color: #28a745;
+        }
+        .modal-copy-btn:hover {
+            background-color: #218838;
+        }
+        .modal-close-btn {
+            background-color: #6c757d;
+        }
+        .modal-close-btn:hover {
+            background-color: #5a6268;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* --- Responsive Adjustments --- */
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 1.5em;
+                margin-bottom: 20px;
+            }
+            p {
+                font-size: 0.95em;
+                margin-bottom: 15px;
+            }
+            .warning {
+                padding: 10px;
+                font-size: 0.85em;
+            }
+            input[type="url"] {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 1em;
+            }
+            .modal-content {
+                padding: 20px;
+                border-radius: 8px;
+            }
+            .modal-content h2 {
+                font-size: 1.5em;
+            }
+            .modal-content code {
+                font-size: 0.9em;
+                padding: 10px;
+            }
+            .modal-actions button {
+                padding: 8px;
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+            }
+            h1 {
+                font-size: 1.2em;
+                margin-bottom: 15px;
+            }
+            p {
+                font-size: 0.9em;
+                margin-bottom: 10px;
+            }
+            .warning {
+                font-size: 0.8em;
+                padding: 8px;
+            }
+            input[type="url"] {
+                font-size: 0.85em;
+                padding: 8px;
+            }
+            button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+            .modal-content {
+                padding: 15px;
+            }
+            .modal-content h2 {
+                font-size: 1.3em;
+            }
+            .modal-content code {
+                font-size: 0.85em;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Encrypter</h1>
+        <div class="warning">
+            <strong>Important limitations:</strong>
+            <ul>
+                <li>The "encrypted" URL will be **longer** than the original.</li>
+                <li>**Requires JavaScript** enabled in the user's browser to work.</li>
+                <li>The original URL is **include** in the generated link.</li>
+            </ul>
+        </div>
+        <div class="input-group">
+            <label for="longUrl">Enter the URL:</label>
+            <input type="url" id="longUrl" placeholder="e.g., https://www.example.com" required>
+            <button onclick="generateShortLink()">Generate Link</button>
+        </div>
+    </div>
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text">Loading... Please wait.</div>
+    </div>
+    <div id="link-result-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Encrypted Link</h2>
+            <code id="shortUrlOutput"></code>
+            <div class="modal-actions">
+                <button class="modal-copy-btn" onclick="copyShortLink()">Copy Link</button>
+                <button class="modal-close-btn" onclick="closeLinkModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get elements for loading and result modals
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const linkResultModal = document.getElementById('link-result-modal');
+        const shortUrlOutput = document.getElementById('shortUrlOutput'); // Now inside the modal
+
+        // --- Redirection Logic (executed when this page is loaded with a #fragment) ---
+        window.onload = function() {
+            if (window.location.hash) {
+                loadingOverlay.classList.add('visible'); // Show loading overlay
+                
+                try {
+                    const encodedUrl = window.location.hash.substring(1);
+                    const originalUrl = atob(encodedUrl);
+
+                    if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) {
+                        console.log("Redirecting to:", originalUrl);
+                        // Small delay for demo purposes to see loading screen. Remove in real use.
+                        setTimeout(() => {
+                            window.location.replace(originalUrl);
+                        }, 800);
+                    } else {
+                        loadingOverlay.classList.remove('visible'); // Hide on error
+                        document.body.innerHTML = '<h1>Invalid URL Encoded</h1><p>The link you tried to open does not contain a valid URL. <a href="." style="color: blue;">Go back to generator</a></p>';
+                    }
+                } catch (e) {
+                    loadingOverlay.classList.remove('visible'); // Hide on error
+                    document.body.innerHTML = '<h1>Error Decoding Link</h1><p>There was an error processing this link. It might be corrupted or malformed. <a href="." style="color: blue;">Go back to generator</a></p>';
+                    console.error("Error decoding URL:", e);
+                }
+            }
+        };
+
+        // --- Link Generation Logic (executed when the "Generate" button is clicked) ---
+        function generateShortLink() {
+            const longUrlInput = document.getElementById('longUrl');
+            let longUrl = longUrlInput.value.trim();
+
+            if (!longUrl) {
+                alert("Please enter a URL to 'shorten'.");
+                return;
+            }
+
+            if (!longUrl.startsWith('http://') && !longUrl.startsWith('https://')) {
+                longUrl = 'https://' + longUrl; // Default to https
+            }
+
+            const encodedUrl = btoa(longUrl);
+
+            // Get the current URL of this HTML file
+            const currentBaseUrl = window.location.origin + window.location.pathname;
+            const clientSideShortUrl = currentBaseUrl + '#' + encodedUrl;
+            
+            // Display the generated link in the modal
+            shortUrlOutput.textContent = clientSideShortUrl;
+            openLinkModal(); // Show the modal
+        }
+
+        // --- Modal Control Functions ---
+        function openLinkModal() {
+            linkResultModal.style.display = 'flex'; // Show modal
+        }
+
+        function closeLinkModal() {
+            linkResultModal.style.display = 'none'; // Hide modal
+        }
+
+        // Close modal if clicking outside the content (on the overlay)
+        linkResultModal.addEventListener('click', (event) => {
+            if (event.target === linkResultModal) {
+                closeLinkModal();
+            }
+        });
+
+        // --- Copy Link Functionality ---
+        function copyShortLink() {
+            const textToCopy = shortUrlOutput.textContent;
+
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    alert('Link copied to clipboard!');
+                    closeLinkModal(); // Optionally close modal after copy
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy link. Please copy it manually.');
+                });
+        }
+    </script>
+</body>
+</html>
