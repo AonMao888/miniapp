@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dice Roller</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f0f4f8; /* Light blue-gray background */
+            --card-bg: #ffffff; /* White card background */
+            --primary-color: #4CAF50; /* Green for button */
+            --primary-hover: #45a049; /* Darker green on hover */
+            --text-dark: #333;
+            --text-light: #fff;
+            --border-color: #ddd;
+            --shadow-light: 0 4px 10px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 6px 15px rgba(0, 0, 0, 0.15);
+            --dice-bg: #ecf0f1; /* Light gray for dice face */
+            --dot-color: #333; /* Dark dots */
+            --border-radius: 12px;
+            --button-radius: 8px;
+            --transition-speed: 0.3s ease;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent body scroll when popup is active */
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-light);
+            max-width: 450px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            z-index: 1; /* Ensure container is above overlay but below popup */
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-top: 0;
+            font-size: 2.2em;
+            font-weight: 700;
+        }
+
+        .dice-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap; /* Allow dice to wrap on smaller screens */
+            gap: 20px;
+            min-height: 120px; /* Ensure space even before first roll */
+        }
+
+        .dice {
+            width: 100px;
+            height: 100px;
+            background-color: var(--dice-bg);
+            border: 2px solid var(--border-color);
+            border-radius: var(--button-radius);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            place-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s ease-out; /* For roll animation */
+            position: relative; /* For dot positioning */
+            transform-style: preserve-3d;
+            will-change: transform; /* Hint browser for animation optimization */
+        }
+
+        /* --- Animation for Rolling Dice --- */
+        .dice.rolling {
+            animation: shakeAndRotate 0.3s infinite cubic-bezier(.36,.07,.19,.97) both;
+            transform-origin: 50% 50%;
+        }
+
+        @keyframes shakeAndRotate {
+            0% { transform: translate(1px, 1px) rotate(0deg) rotateY(0deg) rotateX(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg) rotateY(20deg) rotateX(10deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg) rotateX(-15deg) rotateY(5deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg) rotateY(-20deg) rotateX(-5deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg) rotateX(10deg) rotateY(15deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg) rotateY(25deg) rotateX(-10deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg) rotateX(20deg) rotateY(-5deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg) rotateY(-25deg) rotateX(-15deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg) rotateX(5deg) rotateY(10deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg) rotateY(0deg) rotateX(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg) rotateX(-5deg) rotateY(-10deg); }
+        }
+
+
+        .dot {
+            width: 18px;
+            height: 18px;
+            background-color: var(--dot-color);
+            border-radius: 50%;
+            transition: opacity 0.1s ease-in-out;
+            position: absolute; /* Position dots precisely */
+        }
+
+        /* Dot positioning for each face */
+        /* Common positions */
+        .dot-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .dot-top-left { top: 15px; left: 15px; }
+        .dot-top-right { top: 15px; right: 15px; }
+        .dot-bottom-left { bottom: 15px; left: 15px; }
+        .dot-bottom-right { bottom: 15px; right: 15px; }
+        .dot-middle-left { top: 50%; left: 15px; transform: translateY(-50%); }
+        .dot-middle-right { top: 50%; right: 15px; transform: translateY(-50%); }
+
+        /* Hide all dots by default, then show specific ones */
+        .dice .dot { opacity: 0; }
+
+        /* Dice face 1 */
+        .dice[data-value="1"] .dot-center { opacity: 1; }
+
+        /* Dice face 2 */
+        .dice[data-value="2"] .dot-top-left,
+        .dice[data-value="2"] .dot-bottom-right { opacity: 1; }
+
+        /* Dice face 3 */
+        .dice[data-value="3"] .dot-top-left,
+        .dice[data-value="3"] .dot-center,
+        .dice[data-value="3"] .dot-bottom-right { opacity: 1; }
+
+        /* Dice face 4 */
+        .dice[data-value="4"] .dot-top-left,
+        .dice[data-value="4"] .dot-top-right,
+        .dice[data-value="4"] .dot-bottom-left,
+        .dice[data-value="4"] .dot-bottom-right { opacity: 1; }
+
+        /* Dice face 5 */
+        .dice[data-value="5"] .dot-top-left,
+        .dice[data-value="5"] .dot-top-right,
+        .dice[data-value="5"] .dot-center,
+        .dice[data-value="5"] .dot-bottom-left,
+        .dice[data-value="5"] .dot-bottom-right { opacity: 1; }
+
+        /* Dice face 6 */
+        .dice[data-value="6"] .dot-top-left,
+        .dice[data-value="6"] .dot-top-right,
+        .dice[data-value="6"] .dot-middle-left,
+        .dice[data-value="6"] .dot-middle-right,
+        .dice[data-value="6"] .dot-bottom-left,
+        .dice[data-value="6"] .dot-bottom-right { opacity: 1; }
+
+
+        .roll-button {
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: 700;
+            border-radius: var(--button-radius);
+            cursor: pointer;
+            transition: background-color var(--transition-speed), box-shadow var(--transition-speed), transform var(--transition-speed);
+            box-shadow: var(--shadow-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 15px; /* Space above button */
+        }
+
+        .roll-button:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+            box-shadow: var(--shadow-medium);
+            transform: translateY(-2px);
+        }
+
+        .roll-button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .roll-button:disabled {
+            background-color: #a5d6a7; /* Lighter green for disabled state */
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .total-display {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-top: 20px;
+            color: var(--primary-color);
+            display: none; /* Hide this as result will be in popup */
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .controls label {
+            font-weight: 500;
+            color: var(--text-medium);
+        }
+
+        .controls select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--dice-bg);
+            font-size: 0.95em;
+            color: var(--text-dark);
+        }
+
+        /* --- Popup Styles --- */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100; /* Above everything else */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .popup-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-content {
+            background-color: var(--card-bg);
+            padding: 35px 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-medium);
+            text-align: center;
+            transform: scale(0.9);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.3s ease;
+        }
+
+        .popup-overlay.active .popup-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .popup-content h2 {
+            color: var(--primary-color);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .popup-content p {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 25px;
+        }
+
+        .popup-close-button {
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: 700;
+            border-radius: var(--button-radius);
+            cursor: pointer;
+            transition: background-color var(--transition-speed), box-shadow var(--transition-speed), transform var(--transition-speed);
+        }
+
+        .popup-close-button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+        .popup-close-button:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 400px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            .dice {
+                width: 80px;
+                height: 80px;
+            }
+            .dot {
+                width: 14px;
+                height: 14px;
+            }
+            .dot-top-left, .dot-top-right, .dot-bottom-left, .dot-bottom-right {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+            }
+            .roll-button {
+                padding: 12px 25px;
+                font-size: 1.1em;
+            }
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+            .controls select {
+                width: 100%;
+            }
+            .popup-content {
+                padding: 25px 30px;
+            }
+            .popup-content h2 {
+                font-size: 2em;
+            }
+            .popup-content p {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Roll the Dice!</h1>
+
+        <div class="controls">
+            <label for="num-dice">Number of Dice:</label>
+            <select id="num-dice">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+            </select>
+        </div>
+
+        <div class="dice-display" id="dice-display">
+            </div>
+
+        <button class="roll-button" onclick="rollDice()">Roll Dice</button>
+
+        <div class="total-display" id="total-display">
+            Total: 0
+        </div>
+    </div>
+
+    <div class="popup-overlay" id="result-popup-overlay">
+        <div class="popup-content">
+            <h2>Roll Result!</h2>
+            <p id="popup-total-display">Total: 0</p>
+            <button class="popup-close-button" onclick="closePopup()">Roll Again</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const numDiceSelect = document.getElementById('num-dice');
+            const diceDisplay = document.getElementById('dice-display');
+
+            // Function to create a single die element
+            function createDie() {
+                const die = document.createElement('div');
+                die.classList.add('dice');
+                // Create all 7 possible dot positions
+                const dotPositions = ['dot-top-left', 'dot-top-right', 'dot-center', 'dot-bottom-left', 'dot-bottom-right', 'dot-middle-left', 'dot-middle-right'];
+                dotPositions.forEach(pos => {
+                    const dot = document.createElement('div');
+                    dot.classList.add('dot', pos);
+                    die.appendChild(dot);
+                });
+                return die;
+            }
+
+            // Function to update the number of dice displayed
+            function updateDiceDisplay() {
+                const numDice = parseInt(numDiceSelect.value);
+                diceDisplay.innerHTML = ''; // Clear existing dice
+
+                for (let i = 0; i < numDice; i++) {
+                    const die = createDie();
+                    diceDisplay.appendChild(die);
+                }
+                rollDice(false); // Roll dice immediately to show initial state (no rolling animation)
+            }
+
+            // Initial display setup
+            numDiceSelect.addEventListener('change', updateDiceDisplay);
+            updateDiceDisplay(); // Call once on load
+        });
+
+
+        function rollDice(animate = true) {
+            const numDice = parseInt(document.getElementById('num-dice').value);
+            const diceElements = document.querySelectorAll('.dice');
+            const popupTotalDisplay = document.getElementById('popup-total-display');
+            let total = 0;
+            const rollResults = [];
+            const animationDuration = 700; // Total animation time in ms for each die
+
+            // Disable button during animation
+            const rollButton = document.querySelector('.roll-button');
+            rollButton.disabled = true;
+            rollButton.textContent = 'Rolling...';
+
+            let diceCompletedCount = 0;
+
+            diceElements.forEach((die, index) => {
+                // Add rolling animation class if animate is true
+                if (animate) {
+                    die.classList.add('rolling');
+                } else {
+                    // Ensure it's removed if not animating (for initial load)
+                    die.classList.remove('rolling');
+                }
+
+                // Stagger the reveal of the result slightly
+                const revealDelay = animate ? 300 + (index * 100) : 0;
+
+                setTimeout(() => {
+                    const roll = Math.floor(Math.random() * 6) + 1;
+                    die.setAttribute('data-value', roll); // Set data-value to control dot visibility via CSS
+                    rollResults[index] = roll; // Store result
+
+                    // Remove rolling animation class only after it has played
+                    if (animate) {
+                        // Use a longer timeout than the animation itself to ensure it completes
+                        setTimeout(() => {
+                             die.classList.remove('rolling');
+                             diceCompletedCount++;
+                             if (diceCompletedCount === numDice) {
+                                // All dice have finished their animation and values are set
+                                total = rollResults.reduce((sum, current) => sum + current, 0);
+                                popupTotalDisplay.textContent = `Total: ${total}`;
+                                showPopup();
+                                rollButton.disabled = false;
+                                rollButton.textContent = 'Roll Dice';
+                             }
+                        }, animationDuration - revealDelay); // When to remove class relative to total animation
+                    } else {
+                         // For non-animated initial load, immediately update total
+                         diceCompletedCount++;
+                         if (diceCompletedCount === numDice) {
+                            total = rollResults.reduce((sum, current) => sum + current, 0);
+                            popupTotalDisplay.textContent = `Total: ${total}`; // Update popup even on initial non-animated roll
+                            rollButton.disabled = false;
+                            rollButton.textContent = 'Roll Dice';
+                         }
+                    }
+
+                }, revealDelay);
+            });
+        }
+
+        // --- Popup Functions ---
+        function showPopup() {
+            document.getElementById('result-popup-overlay').classList.add('active');
+        }
+
+        function closePopup() {
+            document.getElementById('result-popup-overlay').classList.remove('active');
+            // Optionally, you might want to clear dice or re-roll here
+            // For now, it just closes the popup, ready for another roll
+        }
+    </script>
+</body>
+</html>
