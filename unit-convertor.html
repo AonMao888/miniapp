@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #42f483; /* Google Blue */
+            --light-blue: #E8F0FE; /* Lighter blue for backgrounds */
+            --text-dark: #202124; /* Dark text */
+            --text-medium: #5F6368; /* Medium gray text/labels */
+            --border-light: #DADCE0; /* Light gray border */
+            --bg-light: #F8F9FA; /* Light background */
+            --bg-white: #FFFFFF; /* White background for cards */
+            --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-fab: 0 6px 16px rgba(0, 0, 0, 0.2); /* Deeper shadow for FAB */
+            --transition-speed: 0.2s ease-out;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 2px;
+            background: linear-gradient(135deg, #e0f2f7, #c1e4f3); /* Soft, subtle gradient */
+            color: var(--text-dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .converter-wrapper {
+            background-color: var(--bg-white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-subtle);
+            max-width: 960px;
+            width: 100%;
+            margin: 15px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            position: relative; /* For the switch button on desktop */
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-blue);
+            margin: 30px 0 20px 0;
+            font-weight: 500;
+            font-size: 2em;
+            padding: 0 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .converter-main {
+            display: flex;
+            flex-direction: column; /* Mobile first: column layout */
+            flex-grow: 1;
+        }
+
+        .input-section, .output-section {
+            flex: 1;
+            padding: 25px;
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Border on mobile is below input section */
+        .input-section {
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 25px;
+        }
+        .output-section {
+             padding-top: 25px;
+        }
+
+        /* Input Group & Label Styling */
+        .input-group {
+            position: relative;
+            margin-bottom: 0;
+            flex-shrink: 0;
+            flex-grow: 0;
+        }
+
+        label {
+            position: absolute;
+            top: 20px;
+            left: 18px;
+            color: var(--text-medium);
+            font-size: 1.05em;
+            transition: all var(--transition-speed);
+            pointer-events: none;
+            z-index: 1;
+            background-color: transparent;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 28px 18px 12px 18px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1.15em;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+            transition: all var(--transition-speed);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            font-weight: 400;
+        }
+
+        /* Floating Label Effect */
+        select:focus + label,
+        input[type="number"]:focus + label,
+        select:not([value=""]) + label,
+        input[type="number"]:valid + label {
+            top: 8px;
+            font-size: 0.75em;
+            color: var(--primary-blue);
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: var(--primary-blue);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+            background-color: var(--bg-white);
+        }
+
+        /* Custom arrow for select dropdowns */
+        .input-group::after {
+            content: '▼';
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-medium);
+            font-size: 0.8em;
+            z-index: 2;
+        }
+        .input-group:has(input[type="number"])::after {
+            content: none;
+        }
+
+        /* Result Box Styling */
+        .result-box {
+            background-color: var(--bg-light);
+            padding: 25px 18px;
+            border-radius: 8px;
+            font-size: 1.8em;
+            font-weight: 500;
+            text-align: left;
+            min-height: 120px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            color: var(--primary-blue);
+            border: 1px solid var(--border-light);
+            word-break: break-word;
+            line-height: 1.3;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        /* Disabled option styling */
+        option[disabled] {
+            color: var(--text-medium);
+            font-weight: normal;
+        }
+
+        /* Category label specific style to make it float immediately */
+        select#category[value]:not([value=""]) + label {
+            top: 8px;
+            font-size: 0.75em;
+            color: var(--primary-blue);
+        }
+
+        /* Switch Button (Default for Mobile - FAB style) */
+        .switch-button {
+            position: fixed; /* Fixed position for FAB */
+            bottom: 25px; /* From bottom */
+            right: 25px; /* From right */
+            background-color: var(--primary-blue); /* Blue background for FAB */
+            border: none; /* No border for FAB */
+            border-radius: 50%;
+            width: 56px; /* Standard FAB size */
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000; /* High z-index to stay on top */
+            box-shadow: var(--shadow-fab); /* Deeper shadow for FAB */
+            transition: background-color var(--transition-speed), transform var(--transition-speed), box-shadow var(--transition-speed);
+            margin: 0; /* Remove any previous margins */
+        }
+        .switch-button:hover {
+            background-color: #357ae8; /* Slightly darker blue on hover */
+            transform: scale(1.08);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); /* Even deeper shadow on hover */
+        }
+        .switch-button svg {
+            fill: var(--bg-white); /* White icon for blue FAB */
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Responsive adjustments for desktop (side-by-side) */
+        @media (min-width: 768px) {
+            .converter-main {
+                flex-direction: row; /* Side-by-side */
+            }
+            .input-section {
+                border-right: 1px solid var(--border-light); /* Separator */
+                border-bottom: none; /* No bottom border */
+                padding-bottom: 25px; /* Restore full padding */
+            }
+            .output-section {
+                padding-top: 25px;
+            }
+            h1 {
+                display: none; /* Hide H1 on large screens */
+            }
+
+            /* Switch button specific for desktop */
+            .switch-button {
+                position: absolute; /* Absolute position relative to converter-wrapper */
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%); /* Center it precisely */
+                background-color: var(--bg-white); /* White background on desktop */
+                border: 1px solid var(--border-light); /* Border on desktop */
+                box-shadow: var(--shadow-subtle); /* Subtle shadow on desktop */
+                width: 52px; /* Slightly smaller button on desktop */
+                height: 52px;
+                z-index: 10; /* Lower z-index than FAB */
+            }
+            .switch-button:hover {
+                background-color: var(--light-blue); /* Light blue on hover for desktop */
+                transform: translate(-50%, -50%) scale(1.08); /* Full transform for desktop */
+                box-shadow: var(--shadow-hover);
+            }
+            .switch-button svg {
+                fill: var(--text-medium); /* Gray icon for white button */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="converter-wrapper">
+        <h1>Unit Converter</h1>
+        <div class="converter-main">
+            <div class="input-section">
+                <div class="input-group">
+                    <select id="category" onchange="populateUnits()" value="">
+                        <option value="" disabled selected>Select Category</option>
+                        <option value="length">Length</option>
+                        <option value="mass">Mass</option>
+                        <option value="volume">Volume</option>
+                        <option value="temperature">Temperature</option>
+                        <option value="time">Time</option>
+                        <option value="area">Area</option>
+                        <option value="digital_storage">Digital Storage</option>
+                        <option value="energy">Energy</option>
+                        <option value="pressure">Pressure</option>
+                        <option value="speed">Speed</option>
+                    </select>
+                    <label for="category">Category</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="number" id="fromValue" value="1" step="any" oninput="convertUnits()">
+                    <label for="fromValue">Value to convert</label>
+                </div>
+
+                <div class="input-group">
+                    <select id="fromUnit" onchange="convertUnits()" value="">
+                        <option value="" disabled selected>Select From Unit</option>
+                        </select>
+                    <label for="fromUnit">From unit</label>
+                </div>
+            </div>
+
+            <div class="switch-button" onclick="swapUnits()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zm7.01-6H10V2l-3.99 4L10 10V7h7.01v3L21 6l-3.99-4v3z"/>
+                </svg>
+            </div>
+
+            <div class="output-section">
+                 <div class="input-group">
+                    <select id="toUnit" onchange="convertUnits()" value="">
+                        <option value="" disabled selected>Select To Unit</option>
+                        </select>
+                    <label for="toUnit">To unit</label>
+                </div>
+
+                <div class="result-box">
+                    <span id="result">Conversion result will appear here</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const units = {
+            length: {
+                meter: 1,
+                kilometer: 1000,
+                centimeter: 0.01,
+                millimeter: 0.001,
+                micrometer: 0.000001,
+                nanometer: 0.000000001,
+                mile: 1609.344,
+                yard: 0.9144,
+                foot: 0.3048,
+                inch: 0.0254,
+                'nautical mile': 1852,
+                'light year': 9.461e15 // meters
+            },
+            mass: {
+                kilogram: 1,
+                gram: 0.001,
+                milligram: 0.000001,
+                microgram: 0.000000001,
+                tonne: 1000,
+                'metric ton': 1000,
+                pound: 0.45359237,
+                ounce: 0.0283495231,
+                stone: 6.35029,
+                carat: 0.0002 // kg
+            },
+            volume: {
+                'cubic meter': 1,
+                'cubic centimeter': 0.000001,
+                'cubic inch': 0.0000163871,
+                'cubic foot': 0.0283168,
+                liter: 0.001,
+                milliliter: 0.000001,
+                gallon: 0.00378541, // US liquid gallon
+                quart: 0.000946353, // US liquid quart
+                pint: 0.000473176, // US liquid pint
+                cup: 0.000236588, // US customary cup
+                'fluid ounce': 0.0000295735, // US fluid ounce
+                tablespoon: 0.0000147868, // US tablespoon
+                teaspoon: 0.00000492892 // US teaspoon
+            },
+            temperature: {
+                celsius: {
+                    toBase: (val) => val,
+                    fromBase: (val) => val
+                },
+                fahrenheit: {
+                    toBase: (val) => (val - 32) * 5/9,
+                    fromBase: (val) => (val * 9/5) + 32
+                },
+                kelvin: {
+                    toBase: (val) => val - 273.15,
+                    fromBase: (val) => val + 273.15
+                },
+                rankine: {
+                    toBase: (val) => (val - 491.67) * 5/9,
+                    fromBase: (val) => (val * 9/5) + 491.67
+                }
+            },
+            time: {
+                second: 1,
+                millisecond: 0.001,
+                microsecond: 0.000001,
+                nanosecond: 0.000000001,
+                minute: 60,
+                hour: 3600,
+                day: 86400,
+                week: 604800,
+                month: 2629800,
+                year: 31557600,
+                decade: 315576000,
+                century: 3155760000
+            },
+            area: {
+                'square meter': 1,
+                'square kilometer': 1e6,
+                'square centimeter': 1e-4,
+                'square millimeter': 1e-6,
+                'square mile': 2.58999e6,
+                'square yard': 0.836127,
+                'square foot': 0.092903,
+                'square inch': 0.00064516,
+                acre: 4046.86,
+                hectare: 10000
+            },
+            digital_storage: {
+                bit: 1,
+                byte: 8,
+                kilobit: 1000,
+                kilobyte: 8000,
+                megabit: 1000000,
+                megabyte: 8000000,
+                gigabit: 1e9,
+                gigabyte: 8e9,
+                terabit: 1e12,
+                terabyte: 8e12,
+                petabit: 1e15,
+                petabyte: 8e15
+            },
+            energy: {
+                joule: 1,
+                kilojoule: 1000,
+                calorie: 4.184,
+                'kilocalorie (Calorie)': 4184,
+                'watt-hour': 3600,
+                'kilowatt-hour': 3.6e6,
+                'electron volt': 1.60218e-19,
+                'foot-pound': 1.35582,
+                btu: 1055.06
+            },
+            pressure: {
+                pascal: 1,
+                kilopascal: 1000,
+                megapascal: 1e6,
+                bar: 100000,
+                psi: 6894.76,
+                atmosphere: 101325,
+                torr: 133.322,
+                'millimeter of mercury': 133.322
+            },
+            speed: {
+                'meter per second': 1,
+                'kilometer per hour': 0.277778,
+                'mile per hour': 0.44704,
+                'foot per second': 0.3048,
+                knot: 0.514444,
+                mach: 343,
+                'speed of light': 299792458
+            }
+        };
+
+        function populateUnits() {
+            const categorySelect = document.getElementById('category');
+            const fromUnitSelect = document.getElementById('fromUnit');
+            const toUnitSelect = document.getElementById('toUnit');
+            const selectedCategory = categorySelect.value;
+
+            categorySelect.setAttribute('value', selectedCategory);
+
+            fromUnitSelect.innerHTML = '<option value="" disabled selected>Select From Unit</option>';
+            toUnitSelect.innerHTML = '<option value="" disabled selected>Select To Unit</option>';
+
+            const categoryUnits = units[selectedCategory];
+
+            for (const unit in categoryUnits) {
+                const optionFrom = document.createElement('option');
+                optionFrom.value = unit;
+                optionFrom.textContent = capitalizeFirstLetter(unit);
+                fromUnitSelect.appendChild(optionFrom);
+
+                const optionTo = document.createElement('option');
+                optionTo.value = unit;
+                optionTo.textContent = capitalizeFirstLetter(unit);
+                toUnitSelect.appendChild(optionTo);
+            }
+
+            const defaultSelections = {
+                length: ['meter', 'kilometer'],
+                mass: ['kilogram', 'gram'],
+                volume: ['liter', 'milliliter'],
+                temperature: ['celsius', 'fahrenheit'],
+                time: ['second', 'minute'],
+                area: ['square meter', 'square kilometer'],
+                digital_storage: ['byte', 'kilobyte'],
+                energy: ['joule', 'kilojoule'],
+                pressure: ['pascal', 'kilopascal'],
+                speed: ['meter per second', 'kilometer per hour']
+            };
+
+            if (defaultSelections[selectedCategory]) {
+                fromUnitSelect.value = defaultSelections[selectedCategory][0];
+                toUnitSelect.value = defaultSelections[selectedCategory][1];
+            }
+
+            fromUnitSelect.dispatchEvent(new Event('change'));
+            toUnitSelect.dispatchEvent(new Event('change'));
+
+            convertUnits();
+        }
+
+        function convertUnits() {
+            const categorySelect = document.getElementById('category');
+            const fromValueInput = document.getElementById('fromValue');
+            const fromUnitSelect = document.getElementById('fromUnit');
+            const toUnitSelect = document.getElementById('toUnit');
+            const resultSpan = document.getElementById('result');
+
+            const selectedCategory = categorySelect.value;
+            const fromValue = parseFloat(fromValueInput.value);
+            const fromUnit = fromUnitSelect.value;
+            const toUnit = toUnitSelect.value;
+
+            if (isNaN(fromValue) || fromUnit === '' || toUnit === '' || selectedCategory === '') {
+                resultSpan.textContent = 'Select category, value, and units.';
+                return;
+            }
+
+            const categoryUnits = units[selectedCategory];
+            let convertedValue;
+
+            if (selectedCategory === 'temperature') {
+                const fromConverter = categoryUnits[fromUnit];
+                const toConverter = categoryUnits[toUnit];
+
+                if (!fromConverter || !toConverter) {
+                    resultSpan.textContent = 'Error: Invalid temperature unit.';
+                    return;
+                }
+                const valueInBase = fromConverter.toBase(fromValue);
+                convertedValue = toConverter.fromBase(valueInBase);
+
+            } else {
+                const fromFactor = categoryUnits[fromUnit];
+                const toFactor = categoryUnits[toUnit];
+
+                if (fromFactor === undefined || toFactor === undefined) {
+                    resultSpan.textContent = 'Error: Invalid unit for this category.';
+                    return;
+                }
+                const valueInBase = fromValue * fromFactor;
+                convertedValue = valueInBase / toFactor;
+            }
+
+            let formattedResult;
+            if (Math.abs(convertedValue) < 0.000001 && convertedValue !== 0) {
+                formattedResult = convertedValue.toExponential(4);
+            } else if (Math.abs(convertedValue) > 1e9) {
+                formattedResult = convertedValue.toExponential(4);
+            } else {
+                formattedResult = convertedValue.toFixed(6).replace(/\.?0+$/, '');
+            }
+
+            resultSpan.textContent = formattedResult;
+        }
+
+        function capitalizeFirstLetter(string) {
+            if (!string) return '';
+            return string.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+
+        function swapUnits() {
+            const fromValueInput = document.getElementById('fromValue');
+            const fromUnitSelect = document.getElementById('fromUnit');
+            const toUnitSelect = document.getElementById('toUnit');
+            const resultSpan = document.getElementById('result');
+
+            const currentFromValue = fromValueInput.value;
+            const currentFromUnit = fromUnitSelect.value;
+            const currentToUnit = toUnitSelect.value;
+            const currentResult = resultSpan.textContent;
+
+            if (currentFromUnit === '' || currentToUnit === '') {
+                resultSpan.textContent = 'Select both units to swap.';
+                return;
+            }
+
+            fromUnitSelect.value = currentToUnit;
+            toUnitSelect.value = currentFromUnit;
+
+            if (!isNaN(parseFloat(currentResult))) {
+                fromValueInput.value = currentResult;
+            } else {
+                fromValueInput.value = '';
+            }
+
+            fromUnitSelect.dispatchEvent(new Event('change'));
+            toUnitSelect.dispatchEvent(new Event('change'));
+            fromValueInput.dispatchEvent(new Event('input'));
+
+            convertUnits();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            function updateLabelState(element) {
+                if (element.value !== '' && element.value !== element.querySelector('option[disabled][selected]')?.value) {
+                     element.setAttribute('value', element.value);
+                } else {
+                    element.removeAttribute('value');
+                }
+            }
+
+            document.querySelectorAll('input, select').forEach(element => {
+                element.addEventListener('input', () => updateLabelState(element));
+                element.addEventListener('change', () => updateLabelState(element));
+                updateLabelState(element);
+            });
+
+            document.getElementById('category').value = 'length';
+            setTimeout(() => {
+                document.getElementById('category').dispatchEvent(new Event('change'));
+            }, 0);
+        });
+    </script>
+</body>
+</html>
