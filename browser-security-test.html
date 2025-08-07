@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Security Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 2em; line-height: 1.6; background-color: #f4f7f9; color: #333; }
+        .container { max-width: 900px; margin: auto; padding: 2em; background-color: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 0.5em; }
+        p { text-align: center; color: #7f8c8d; }
+        #startTestBtn { display: block; width: 200px; margin: 2em auto; padding: 0.8em 1.5em; font-size: 1em; cursor: pointer; background-color: #3498db; color: white; border: none; border-radius: 50px; transition: background-color 0.3s ease; }
+        #startTestBtn:hover { background-color: #2980b9; }
+        #results { margin-top: 2em; border-top: 1px solid #eee; padding-top: 2em; }
+        .test-item { padding: 1.2em 0; border-bottom: 1px solid #eee; display: flex; flex-direction: column; }
+        .test-title { font-weight: bold; font-size: 1.1em; color: #2c3e50; }
+        .test-description { color: #555; margin-top: 0.3em; font-size: 0.9em; }
+        .status { margin-top: 0.5em; font-weight: bold; }
+        .status-ok { color: #27ae60; }
+        .status-warn { color: #f39c12; }
+        .status-fail { color: #c0392b; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 2s linear infinite; margin-left: 10px; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #summary { text-align: center; margin-bottom: 2em; }
+        #summary p { font-size: 1.2em; font-weight: bold; }
+        #chart-container { width: 300px; height: 300px; margin: auto; }
+        #autofill-test-form { display:none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Browser Security & Privacy Tester 🛡️</h1>
+        <p>Click the button to run a series of tests on your browser's security and privacy features.</p>
+        <button id="startTestBtn">Start Test</button>
+
+        <div id="summary" style="display:none;">
+            <h2>Summary</h2>
+            <p>Your browser scored <span id="score" style="font-size: 1.5em;"></span></p>
+            <div id="chart-container">
+                <canvas id="resultsChart"></canvas>
+            </div>
+        </div>
+
+        <div id="results">
+            <h2>Test Results:</h2>
+            <div id="results-content">
+                <p>Results will appear here...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="autofill-test-form">
+        <form id="vulnerable-form" action="javascript:void(0);">
+            <input type="text" id="autofill-username" name="username" autocomplete="username">
+            <input type="password" id="autofill-password" name="password" autocomplete="current-password">
+            <input type="submit">
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('startTestBtn').addEventListener('click', runAllTests);
+
+        const resultsContent = document.getElementById('results-content');
+        let testScores = { pass: 0, warn: 0, fail: 0, total: 0 };
+        let resultsChart;
+        
+        async function runAllTests() {
+            resultsContent.innerHTML = '';
+            document.getElementById('summary').style.display = 'none';
+            testScores = { pass: 0, warn: 0, fail: 0, total: 0 };
+            
+            const tests = [
+                { title: 'User-Agent String', func: runUserAgentCheck },
+                { title: 'HTTPS Protocol', func: runHTTPSCheck },
+                { title: 'Mixed Content', func: runMixedContentCheck },
+                { title: 'CSP Test', func: runCSPTest },
+                { title: 'WebRTC IP Leak', func: runWebRTCLeakTest },
+                { title: 'HSTS Test', func: runHSTSCheck },
+                { title: 'Referer Header Policy', func: runRefererPolicyTest },
+                { title: 'Browser Fingerprinting', func: runFingerprintingTest },
+                { title: 'Cookie Stealing Test', func: runCookieStealTest },
+                { title: 'Geolocation Access Test', func: runGeolocationTest },
+                { title: 'Camera & Microphone Access Test', func: runMediaDevicesTest },
+                { title: 'Autofill Vulnerability', func: runAutofillTest }
+            ];
+
+            for (const test of tests) {
+                const statusElement = addResult(test.title, 'Running test...', 'status-warn', true);
+                await test.func(statusElement);
+            }
+            
+            updateSummaryChart();
+        }
+
+        function addResult(title, description, statusClass, showSpinner = false) {
+            const item = document.createElement('div');
+            item.className = 'test-item';
+            item.innerHTML = `
+                <div class="test-title">${title}</div>
+                <div class="test-description">${description}</div>
+                <div class="status ${statusClass}">${showSpinner ? '<div class="spinner"></div>' : '...'}</div>
+            `;
+            resultsContent.appendChild(item);
+            return item.querySelector('.status');
+        }
+
+        function updateStatus(element, newStatusText, newStatusClass) {
+            if (element) {
+                element.innerHTML = newStatusText;
+                element.className = `status ${newStatusClass}`;
+                if (newStatusClass === 'status-ok') testScores.pass++;
+                else if (newStatusClass === 'status-warn') testScores.warn++;
+                else if (newStatusClass === 'status-fail') testScores.fail++;
+                testScores.total++;
+            }
+        }
+        
+        function updateSummaryChart() {
+            document.getElementById('summary').style.display = 'block';
+            const scoreElement = document.getElementById('score');
+            const finalScore = Math.round((testScores.pass / testScores.total) * 100) || 0;
+            scoreElement.textContent = `${finalScore}%`;
+
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            if (resultsChart) {
+                resultsChart.destroy();
+            }
+            resultsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Passed', 'Warnings', 'Failed'],
+                    datasets: [{
+                        label: 'Security Test Results',
+                        data: [testScores.pass, testScores.warn, testScores.fail],
+                        backgroundColor: ['#27ae60', '#f39c12', '#c0392b'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'Security Test Summary'
+                        }
+                    }
+                }
+            });
+        }
+        
+        async function runUserAgentCheck(statusElement) {
+            const userAgent = navigator.userAgent;
+            updateStatus(statusElement, `Your User-Agent: ${userAgent}`, 'status-ok');
+        }
+
+        async function runHTTPSCheck(statusElement) {
+            if (window.location.protocol === 'https:') {
+                updateStatus(statusElement, 'PASS: Your connection is secure (HTTPS).', 'status-ok');
+            } else {
+                updateStatus(statusElement, 'FAIL: Your connection is not secure (HTTP). This is a major security risk.', 'status-fail');
+            }
+        }
+
+        async function runMixedContentCheck(statusElement) {
+            if (window.location.protocol === 'https:') {
+                updateStatus(statusElement, 'PASS: No mixed content detected. (Basic check)', 'status-ok');
+            } else {
+                updateStatus(statusElement, 'WARNING: Cannot check for mixed content on an insecure connection.', 'status-warn');
+            }
+        }
+
+        async function runCSPTest(statusElement) {
+            return new Promise(resolve => {
+                const script = document.createElement('script');
+                script.textContent = `try {window.cspTestExecuted = true;} catch (e) {}`;
+                document.head.appendChild(script);
+                script.remove();
+
+                setTimeout(() => {
+                    if (window.cspTestExecuted) {
+                        updateStatus(statusElement, 'FAIL: Inline script executed. Your browser may not be enforcing a strict CSP.', 'status-fail');
+                    } else {
+                        updateStatus(statusElement, 'PASS: Inline script was blocked. Your browser likely enforces a good CSP.', 'status-ok');
+                    }
+                    resolve();
+                }, 100);
+            });
+        }
+
+        async function runWebRTCLeakTest(statusElement) {
+            return new Promise(resolve => {
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer));
+                let leakFound = false;
+
+                pc.onicecandidate = (event) => {
+                    if (!event || !event.candidate) return;
+                    const candidate = event.candidate.candidate;
+                    if (candidate.includes('udp') && candidate.includes('host')) {
+                        const ip = candidate.split(' ')[4];
+                        if (ip) {
+                            leakFound = true;
+                            updateStatus(statusElement, `WARNING: Potential IP leak detected (${ip}). This may reveal your real IP address.`, 'status-warn');
+                        }
+                    }
+                };
+
+                setTimeout(() => {
+                    if (!leakFound) {
+                        updateStatus(statusElement, 'PASS: No WebRTC IP leak detected.', 'status-ok');
+                    }
+                    resolve();
+                }, 2000);
+            });
+        }
+        
+        async function runHSTSCheck(statusElement) {
+            const hstsEnabled = 'Strict-Transport-Security' in document;
+            if (hstsEnabled) {
+                updateStatus(statusElement, 'PASS: HSTS (HTTP Strict Transport Security) is supported and active.', 'status-ok');
+            } else {
+                updateStatus(statusElement, 'WARNING: HSTS is not active on this page. Your browser may be vulnerable to certain downgrade attacks.', 'status-warn');
+            }
+        }
+        
+        async function runRefererPolicyTest(statusElement) {
+            const referrer = document.referrer;
+            if (!referrer) {
+                updateStatus(statusElement, 'PASS: Referer header is empty. This is a good privacy practice.', 'status-ok');
+            } else {
+                updateStatus(statusElement, `WARNING: Referer header is present. This could potentially leak your browsing history. Value: ${referrer}`, 'status-warn');
+            }
+        }
+        
+        async function runFingerprintingTest(statusElement) {
+            const fingerprintData = [
+                navigator.userAgent,
+                navigator.platform,
+                screen.width + 'x' + screen.height,
+                new Date().getTimezoneOffset(),
+            ];
+            const fingerprint = btoa(JSON.stringify(fingerprintData)).substring(0, 15);
+            updateStatus(statusElement, `Your browser fingerprint is: ${fingerprint}. A unique fingerprint can be used to track you.`, 'status-warn');
+        }
+
+        async function runCookieStealTest(statusElement) {
+            try {
+                const response = await fetch('https://example.com', { credentials: 'omit' });
+                if (response.ok) {
+                    updateStatus(statusElement, 'PASS: The request to another domain was successful, but your cookies were not sent.', 'status-ok');
+                } else {
+                    updateStatus(statusElement, `WARNING: Could not complete the test. Status: ${response.status}`, 'status-warn');
+                }
+            } catch (e) {
+                updateStatus(statusElement, 'PASS: The cross-site request was blocked by your browser\'s security policy.', 'status-ok');
+            }
+        }
+
+        async function runGeolocationTest(statusElement) {
+            return new Promise(resolve => {
+                if (!navigator.geolocation) {
+                    updateStatus(statusElement, 'WARNING: Geolocation is not supported by your browser.', 'status-warn');
+                    return resolve();
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    () => {
+                        updateStatus(statusElement, 'FAIL: Geolocation was granted without permission. This is a major security flaw.', 'status-fail');
+                        resolve();
+                    },
+                    (error) => {
+                        if (error.code === error.PERMISSION_DENIED) {
+                            updateStatus(statusElement, 'PASS: Geolocation access was correctly denied. This is the expected secure behavior.', 'status-ok');
+                        } else {
+                            updateStatus(statusElement, 'WARNING: Geolocation test failed with an unexpected error.', 'status-warn');
+                        }
+                        resolve();
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            });
+        }
+
+        async function runMediaDevicesTest(statusElement) {
+            return new Promise(resolve => {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    updateStatus(statusElement, 'WARNING: MediaDevices API is not supported by your browser.', 'status-warn');
+                    return resolve();
+                }
+
+                navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+                    .then(stream => {
+                        stream.getTracks().forEach(track => track.stop());
+                        updateStatus(statusElement, 'FAIL: Media devices were accessed without permission. Your browser is highly vulnerable.', 'status-fail');
+                        resolve();
+                    })
+                    .catch(error => {
+                        if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+                            updateStatus(statusElement, 'PASS: Camera and microphone access was correctly denied. This is the expected secure behavior.', 'status-ok');
+                        } else {
+                            updateStatus(statusElement, `WARNING: Media devices test failed with an unexpected error: ${error.name}.`, 'status-warn');
+                        }
+                        resolve();
+                    });
+            });
+        }
+        
+        async function runAutofillTest(statusElement) {
+            return new Promise(resolve => {
+                const usernameField = document.getElementById('autofill-username');
+                const passwordField = document.getElementById('autofill-password');
+
+                setTimeout(() => {
+                    if (usernameField.value || passwordField.value) {
+                        updateStatus(statusElement, 'WARNING: Your browser has autofilled a hidden form. This may be a vulnerability.', 'status-warn');
+                    } else {
+                        updateStatus(statusElement, 'PASS: No autofill data was detected in the hidden form. Your browser appears to be secure against this attack.', 'status-ok');
+                    }
+                    resolve();
+                }, 500);
+            });
+        }
+    </script>
+</body>
+</html>
