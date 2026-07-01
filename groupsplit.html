@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Student Group Splitter</title>
+    <style>
+        /* CSS စတိုင်များ */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .main-container { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap; }
+        
+        /* Left Sidebar */
+        .sidebar { flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: fit-content; }
+        textarea { width: 100%; height: 250px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; resize: vertical; }
+        .controls { margin-top: 20px; }
+        .group-input { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 6px; background-color: #4a90e2; color: white; font-weight: bold; }
+        button:hover { background-color: #357abd; }
+        .btn-small { background-color: #e0e0e0; color: #333; }
+        
+        /* Right Grid */
+        .content { flex: 3; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .student-item { padding: 5px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .student-item:hover { color: #4a90e2; font-weight: bold; }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; margin-bottom: 15px; }
+        .close-btn { cursor: pointer; font-size: 24px; color: #888; }
+        .hidden { display: none !important; }
+        
+        .qr-img { width: 100px; height: 100px; display: block; margin: 10px auto; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">Classroom Student Group Splitter</h1>
+
+    <div class="main-container">
+        <!-- Left Panel -->
+        <div class="sidebar">
+            <label>ကျောင်းသားနာမည်များ (တစ်ယောက်တစ်ကြောင်း)</label>
+            <textarea id="studentInput" placeholder="ကျောင်းသားနာမည်များကို ရိုက်ထည့်ပါ..."></textarea>
+            
+            <div class="controls">
+                <label>အုပ်စုအရေအတွက်:</label>
+                <div class="group-input">
+                    <button class="btn-small" onclick="changeGroupCount(-1)">-</button>
+                    <input type="number" id="groupCount" value="4" style="width: 50px; text-align: center; padding: 8px;">
+                    <button class="btn-small" onclick="changeGroupCount(1)">+</button>
+                </div>
+                <br>
+                <button onclick="generateGroups()" style="width: 100%; padding: 15px;">Generate Groups</button>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div id="gridContainer" class="content">
+            <p style="color: #888;">စာရင်းထည့်ပြီး Generate ကိုနှိပ်ပါ။</p>
+        </div>
+    </div>
+
+    <!-- Group Summary Modal -->
+    <div id="groupsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>အုပ်စုများ</h2>
+                <span class="close-btn" onclick="closeModal('groupsModal')">&times;</span>
+            </div>
+            <div id="modalGroupContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div id="studentModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h2 id="studentName"></h2>
+            <p>ကျောင်းသားအချက်အလက်</p>
+            <button onclick="closeModal('studentModal')">ပိတ်မည်</button>
+        </div>
+    </div>
+
+    <script>
+        function changeGroupCount(val) {
+            const input = document.getElementById('groupCount');
+            let count = parseInt(input.value) + val;
+            if(count < 1) count = 1;
+            input.value = count;
+        }
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function generateGroups() {
+            const input = document.getElementById('studentInput').value;
+            const groupCount = parseInt(document.getElementById('groupCount').value);
+            const gridContainer = document.getElementById('gridContainer');
+            const modalGroupContainer = document.getElementById('modalGroupContainer');
+            
+            const students = input.split('\n').map(s => s.trim()).filter(s => s !== '');
+            if(students.length === 0) return;
+
+            const shuffled = shuffle([...students]);
+            const groups = Array.from({length: groupCount}, () => []);
+            shuffled.forEach((s, i) => groups[i % groupCount].push(s));
+
+            gridContainer.innerHTML = '';
+            modalGroupContainer.innerHTML = '';
+
+            groups.forEach((group, idx) => {
+                // Add to Grid
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `<h3>အုပ်စု ${idx + 1}</h3>` + group.map(s => `<div class="student-item" onclick="showStudent('${s}')">👤 ${s}</div>`).join('');
+                gridContainer.appendChild(card);
+
+                // Add to Modal
+                const mCard = document.createElement('div');
+                mCard.className = 'card';
+                mCard.innerHTML = `<h3>အုပ်စု ${idx + 1}</h3>` + group.map(s => `<div>👤 ${s}</div>`).join('') + `<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('အုပ်စု ' + (idx + 1) + ': ' + group.join(', '))}" class="qr-img">`;
+                modalGroupContainer.appendChild(mCard);
+            });
+
+            document.getElementById('groupsModal').style.display = 'flex';
+        }
+
+        function showStudent(name) {
+            document.getElementById('studentName').innerText = name;
+            document.getElementById('studentModal').style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+    </script>
+</body>
+</html>
