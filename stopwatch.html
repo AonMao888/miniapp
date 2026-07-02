@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Multi-Student Stopwatch</title>
+    <style>
+        :root {
+            --bg-body: #f0f4f8;
+            --primary-blue: #2563eb;
+            --primary-green: #16a34a;
+            --primary-red: #dc2626;
+            --primary-orange: #ea580c;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            padding: 2rem;
+            line-height: 1.5;
+            font-family: 'Pyidaungsu', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header Section */
+        .header-section {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .header-title h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+
+        .header-title p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .header-section { flex-direction: column; text-align: center; gap: 1.5rem; }
+            .header-title h1 { font-size: 1.5rem; }
+        }
+
+        /* Button Group */
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-add { background: var(--primary-blue); color: white; }
+        .btn-add:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+        .btn-start { background: var(--primary-green); color: white; }
+        .btn-start:hover { background: #15803d; }
+        
+        .btn-stop-indiv { background: var(--primary-red); color: white; width: 100%; margin-top: 10px; }
+        
+        .btn-reset { background: #e2e8f0; color: #475569; }
+        .btn-reset:hover { background: #cbd5e1; }
+
+        .btn-clear { background: #fee2e2; color: var(--primary-red); border: 1px solid #fecaca; }
+
+        /* Timer Grid */
+        .timers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .timer-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+
+        .timer-card.running {
+            border-color: var(--primary-green);
+            background: #f0fdf4;
+        }
+
+        .timer-card.finished {
+            background-color: #f8fafc;
+            opacity: 0.8;
+            border: 1px solid #cbd5e1;
+        }
+
+        .student-label {
+            align-self: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            text-transform: uppercase;
+        }
+
+        .status-running { background: #dcfce7; color: #166534; }
+        .status-finished { background: #f1f5f9; color: #475569; }
+
+        .timer-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            width: 100%;
+            text-align: center;
+        }
+
+        .timer-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            background: #f8fafc;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px inset #e2e8f0;
+        }
+
+        .btn-remove {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-remove:hover { color: var(--primary-red); }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+        }
+        
+        .hidden { display: none; }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1.25rem;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-group { margin-bottom: 1.25rem; }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.6rem;
+            font-size: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 6rem 0;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="header-section">
+            <div class="header-title">
+                <h1>Stopwatch ⏱️</h1>
+                <p>ကျောင်းသားတစ်ဦးချင်းစီ၏ လုပ်ဆောင်ချက်ကြာချိန်ကို တိုင်းတာရန်</p>
+            </div>
+            <div class="button-group">
+                <button onclick="openModal()" class="btn btn-add">+ ကျောင်းသားသစ်ထည့်ရန်</button>
+                <button onclick="startAllStopwatches()" id="globalControlBtn" class="btn btn-start">▶ Start All</button>
+                <button onclick="resetAll()" class="btn btn-reset">↺ Reset All</button>
+                <button onclick="clearAll()" class="btn btn-clear">🗑️ Clear List</button>
+            </div>
+        </header>
+
+        <div id="timersContainer" class="timers-grid"></div>
+
+        <div id="emptyState" class="empty-state">
+            <p>ကျောင်းသားစာရင်း မရှိသေးပါ။ "ကျောင်းသားသစ်ထည့်ရန်" ကို နှိပ်ပါ။</p>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1.5rem;">ကျောင်းသားအမည်ထည့်သွင်းရန်</h2>
+            <div class="form-group">
+                <input type="text" id="studentName" class="input-field" placeholder="ဥပမာ - မောင်မောင်" onkeyup="if(event.key==='Enter') addStudent()">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="closeModal()" class="btn btn-reset">Cancel</button>
+                <button onclick="addStudent()" class="btn btn-add">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let students = [];
+        let globalInterval = null;
+        let isGlobalRunning = false;
+
+        function openModal() {
+            document.getElementById('addModal').classList.remove('hidden');
+            document.getElementById('studentName').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('addModal').classList.add('hidden');
+            document.getElementById('studentName').value = "";
+        }
+
+        function addStudent() {
+            const name = document.getElementById('studentName').value.trim();
+            if (!name) return;
+
+            students.push({
+                id: Date.now(),
+                name: name,
+                elapsedSeconds: 0,
+                isRunning: false,
+                isFinished: false
+            });
+
+            render();
+            closeModal();
+        }
+
+        function formatTime(totalSeconds) {
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            return `${h > 0 ? h.toString().padStart(2, '0') + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function render() {
+            const container = document.getElementById('timersContainer');
+            const empty = document.getElementById('emptyState');
+            container.innerHTML = "";
+
+            if (students.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            } else {
+                empty.classList.add('hidden');
+            }
+
+            students.forEach(student => {
+                const card = document.createElement('div');
+                card.className = `timer-card ${student.isRunning ? 'running' : ''} ${student.isFinished ? 'finished' : ''}`;
+                
+                card.innerHTML = `
+                    <button onclick="removeStudent(${student.id})" class="btn-remove">&times;</button>
+                    <div class="student-label">
+                        <span class="status-tag ${student.isRunning ? 'status-running' : (student.isFinished ? 'status-finished' : '')}">
+                            ${student.isRunning ? 'Running' : (student.isFinished ? 'Finished' : 'Ready')}
+                        </span>
+                    </div>
+                    <h3>${student.name}</h3>
+                    <div class="timer-display">${formatTime(student.elapsedSeconds)}</div>
+                    ${!student.isFinished && student.isRunning ? 
+                        `<button onclick="stopIndividual(${student.id})" class="btn btn-stop-indiv">⏹ Finish</button>` : 
+                        (student.isFinished ? `<p style="color:var(--primary-green); font-weight:bold;">အဆင့်ပြီးဆုံးပါပြီ</p>` : '')
+                    }
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function startAllStopwatches() {
+            if (isGlobalRunning) {
+                // Pause all
+                clearInterval(globalInterval);
+                students.forEach(s => { if(!s.isFinished) s.isRunning = false; });
+                document.getElementById('globalControlBtn').innerHTML = "▶ Resume All";
+                document.getElementById('globalControlBtn').className = "btn btn-start";
+                isGlobalRunning = false;
+            } else {
+                // Start all
+                if (students.filter(s => !s.isFinished).length === 0) return;
+                
+                students.forEach(s => { if(!s.isFinished) s.isRunning = true; });
+                
+                globalInterval = setInterval(() => {
+                    students.forEach(student => {
+                        if (student.isRunning) {
+                            student.elapsedSeconds++;
+                        }
+                    });
+                    render();
+                }, 1000);
+
+                document.getElementById('globalControlBtn').innerHTML = "⏸ Pause All";
+                document.getElementById('globalControlBtn').className = "btn btn-reset";
+                isGlobalRunning = true;
+            }
+            render();
+        }
+
+        function stopIndividual(id) {
+            const student = students.find(s => s.id === id);
+            if (student) {
+                student.isRunning = false;
+                student.isFinished = true;
+                
+                // If all finished, stop the interval
+                if (students.every(s => s.isFinished || !s.isRunning)) {
+                    const activeRunners = students.filter(s => s.isRunning);
+                    if (activeRunners.length === 0) {
+                        // All that were running are now stopped
+                    }
+                }
+                render();
+            }
+        }
+
+        function resetAll() {
+            clearInterval(globalInterval);
+            isGlobalRunning = false;
+            students.forEach(s => {
+                s.elapsedSeconds = 0;
+                s.isRunning = false;
+                s.isFinished = false;
+            });
+            document.getElementById('globalControlBtn').innerHTML = "▶ Start All";
+            document.getElementById('globalControlBtn').className = "btn btn-start";
+            render();
+        }
+
+        function removeStudent(id) {
+            students = students.filter(s => s.id !== id);
+            render();
+        }
+
+        function clearAll() {
+            if (confirm("စာရင်းအားလုံးကို ဖျက်ပစ်ရန် သေချာပါသလား?")) {
+                students = [];
+                resetAll();
+            }
+        }
+    </script>
+</body>
+</html>
